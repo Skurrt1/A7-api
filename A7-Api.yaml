@@ -1,0 +1,110 @@
+openapi: 3.0.3
+info:
+  title: Movie Theater Seat Reservation API
+  version: 1.0.0
+  description: >
+    Lets a customer's device view the seat map for a showtime, place a
+    temporary hold on the seats they pick, and release that hold if they
+    change their mind. A hold keeps the seats reserved for a limited time
+    (for example, 10 minutes) while the customer completes payment. Holds
+    that are not paid for in time expire and the seats become available again.
+
+servers:
+  - url: https://api.example-theater.com/v1
+
+paths:
+  /showtimes/{showtimeId}/seats:
+    get:
+      summary: Get the seat map for a showtime
+      parameters:
+        - name: showtimeId
+          in: path
+          required: true
+          description: ID of the showtime
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Seat map returned. Each seat includes its ID, row, number, type, and status (available, held, or sold).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  showtimeId:
+                    type: string
+                  seats:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        seatId:
+                          type: string
+                        row:
+                          type: string
+                        number:
+                          type: integer
+                        status:
+                          type: string
+                          enum: [available, held, sold]
+        '404':
+          description: Showtime not found
+
+  /reservations:
+    post:
+      summary: Hold seats for a showtime
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [showtimeId, seatIds]
+              properties:
+                showtimeId:
+                  type: string
+                seatIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Seats held. Returns the reservation ID, total price, and when the hold expires.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservationId:
+                    type: string
+                  seatIds:
+                    type: array
+                    items:
+                      type: string
+                  totalPrice:
+                    type: number
+                  holdExpiresAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid request (missing showtime ID or no seats selected)
+        '409':
+          description: One or more of the selected seats is already taken
+
+  /reservations/{reservationId}:
+    delete:
+      summary: Release a seat hold
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          description: ID of the reservation to cancel
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Hold released and seats are available again
+        '404':
+          description: Reservation not found
+        '409':
+          description: Reservation has already been paid for and cannot be released
